@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 class SleeperMCPServer:
     """Main MCP server class for Sleeper Fantasy Football API integration."""
     
-    def __init__(self):
+    def __init__(self, transport_mode: str = "stdio", http_host: str = "0.0.0.0", http_port: int = 8000):
         """Initialize the Sleeper MCP server."""
         self.server = Server("sleeper-mcp-server")
         self.client: Optional[SleeperClient] = None
@@ -49,6 +49,10 @@ class SleeperMCPServer:
         
         # Register MCP handlers
         self._register_handlers()
+        
+        self.transport_mode = transport_mode
+        self.http_host = http_host
+        self.http_port = http_port
     
     def _register_handlers(self) -> None:
         """Register MCP protocol handlers."""
@@ -1319,24 +1323,42 @@ class SleeperMCPServer:
         # Initialize server components
         await self.initialize()
         
-        # Run the server with stdio transport
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name="sleeper-mcp-server",
-                    server_version="0.1.0",
-                    capabilities=self.server.get_capabilities(
-                        notification_options=NotificationOptions(
-                            prompts_changed=False,
-                            resources_changed=False,
-                            tools_changed=False
-                        ),
-                        experimental_capabilities={}
+        if self.transport_mode == "stdio":
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    InitializationOptions(
+                        server_name="sleeper-mcp-server",
+                        server_version="0.1.0",
+                        capabilities=self.server.get_capabilities(
+                            notification_options=NotificationOptions(
+                                prompts_changed=False,
+                                resources_changed=False,
+                                tools_changed=False
+                            ),
+                            experimental_capabilities={}
+                        )
                     )
                 )
-            )
+        elif self.transport_mode in ["http", "websocket", "all"]:
+            # This part would require a proper HTTP/WebSocket server implementation
+            # For now, we'll just log that it's not implemented
+            logger.warning(f"HTTP/WebSocket transport mode is not fully implemented. Transport mode: {self.transport_mode}")
+            # Example placeholder for HTTP server (requires aiohttp or similar)
+            # from aiohttp import web
+            # app = web.Application()
+            # app.router.add_get('/', self._handle_http_request)
+            # runner = web.AppRunner(app)
+            # await runner.setup()
+            # site = web.TCPSite(runner, self.http_host, self.http_port)
+            # await site.start()
+            # logger.info(f"HTTP server started on {self.http_host}:{self.http_port}")
+            # while True:
+            #     await asyncio.sleep(1) # Keep the process alive
+        else:
+            logger.error(f"Unsupported transport mode: {self.transport_mode}")
+            sys.exit(1)
 
 
 async def main() -> None:
@@ -1348,16 +1370,43 @@ async def main() -> None:
         stream=sys.stderr
     )
     
+    # Parse command line arguments for transport mode
+    transport_mode = "stdio"  # Default for Claude Desktop compatibility
+    http_host = "0.0.0.0"
+    http_port = 8000
+    
+    if len(sys.argv) > 1:
+        transport_mode = sys.argv[1]
+    
+    if len(sys.argv) > 2:
+        http_host = sys.argv[2]
+    
+    if len(sys.argv) > 3:
+        try:
+            http_port = int(sys.argv[3])
+        except ValueError:
+            logger.error(f"Invalid port number: {sys.argv[3]}")
+            sys.exit(1)
+    
+    logger.info(f"Starting Sleeper MCP Server in {transport_mode} mode")
+    if transport_mode in ["http", "websocket", "all"]:
+        logger.info(f"HTTP server will run on {http_host}:{http_port}")
+    
     try:
         # Create and run server
-        server = SleeperMCPServer()
+        server = SleeperMCPServer(
+            transport_mode=transport_mode,
+            http_host=http_host,
+            http_port=http_port
+        )
         await server.run()
     except KeyboardInterrupt:
         # Handle graceful shutdown
-        pass
+        logger.info("Server stopped by user")
     except Exception as e:
         # Log errors to stderr to avoid breaking MCP protocol
         logger.error(f"Fatal server error: {e}", exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

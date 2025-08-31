@@ -1,0 +1,21 @@
+# HTTP transport dependencies for Sleeper MCP Server
+# These are additional dependencies needed for HTTP/WebSocket transport
+
+# FastAPI web framework
+fastapi>=0.104.0
+
+# ASGI server for FastAPI
+uvicorn[standard]>=0.24.0
+
+# Optional: WebSocket support
+websockets>=11.0.0
+
+# Optional: Additional HTTP utilities
+aiohttp>=3.8.0
+requests>=2.31.0
+
+# Optional: Enhanced JSON handling
+orjson>=3.9.0
+
+# Optional: CORS and middleware
+python-multipart>=0.0.6

@@ -561,3 +561,131 @@ For issues and questions:
 ---
 
 **Note**: This MCP server is not officially affiliated with Sleeper. It's a third-party integration that uses Sleeper's public API.
+
+#### HTTP Transport Mode
+
+For more robust deployment, use the `sleeper_mcp_server` module directly:
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Start HTTP server on default port 8000
+python -m sleeper_mcp_server.multi_transport_server http
+
+# Start HTTP server on custom host and port
+python -m sleeper_mcp_server.multi_transport_server http 0.0.0.0 8080
+
+# Start both MCP and HTTP simultaneously
+python -m sleeper_mcp_server.multi_transport_server both 0.0.0.0 8000
+```
+
+#### HTTP API Endpoints
+
+When running in HTTP mode, the server provides these REST endpoints:
+
+- **Health Check**: `GET /health`
+- **Server Info**: `GET /info`
+- **List Tools**: `GET /tools`
+- **Call Tool**: `POST /tools/{tool_name}`
+- **Batch Tool Calls**: `POST /tools/batch`
+
+#### Example HTTP Usage
+
+```bash
+# List available tools
+curl http://localhost:8000/tools
+
+# Call a specific tool
+curl -X POST http://localhost:8000/tools/get_user_leagues \
+  -H "Content-Type: application/json" \
+  -d '{"arguments": {"username": "your_username", "season": "2024"}}'
+
+# Batch tool calls
+curl -X POST http://localhost:8000/tools/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool_calls": [
+      {
+        "name": "get_user_leagues",
+        "arguments": {"username": "user1", "season": "2024"}
+      },
+      {
+        "name": "get_league_info", 
+        "arguments": {"league_id": "123456"}
+      }
+    ]
+  }'
+```
+
+#### ADK Integration
+
+For ADK (Agent Development Kit), you can configure the server as an HTTP tool:
+
+```python
+# ADK configuration example
+from adk import Agent
+
+agent = Agent(
+    name="fantasy_football_agent",
+    tools=[
+        {
+            "name": "sleeper_api",
+            "type": "http",
+            "base_url": "http://localhost:8000",
+            "endpoints": {
+                "list_tools": "/tools",
+                "call_tool": "/tools/{tool_name}",
+                "batch_call": "/tools/batch"
+            }
+        }
+    ]
+)
+```
+
+#### LangChain Integration
+
+For LangChain, you can create a custom tool:
+
+```python
+from langchain.tools import BaseTool
+import requests
+
+class SleeperTool(BaseTool):
+    name = "sleeper_api"
+    description = "Access to Sleeper Fantasy Football API"
+    base_url = "http://localhost:8000"
+    
+    def _run(self, tool_name: str, arguments: dict):
+        response = requests.post(
+            f"{self.base_url}/tools/{tool_name}",
+            json={"arguments": arguments}
+        )
+        return response.json()
+    
+    def _arun(self, tool_name: str, arguments: dict):
+        # Async version
+        pass
+```
+
+#### Transport Mode Summary
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `stdio` | MCP protocol via stdio | Claude Desktop |
+| `http` | HTTP REST API | ADK, LangChain, custom agents |
+| `both` | Both MCP and HTTP | Hybrid setups, development |
+
+#### Environment Variables
+
+You can also configure the server using environment variables:
+
+```bash
+export SLEEPER_API_BASE_URL="https://api.sleeper.app/v1"
+export CACHE_TTL_SECONDS="3600"
+export LOG_LEVEL="INFO"
+export MAX_RETRIES="3"
+export TRANSPORT_MODE="http"
+export HTTP_HOST="0.0.0.0"
+export HTTP_PORT="8000"
+```
