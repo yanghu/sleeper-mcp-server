@@ -94,7 +94,7 @@ class User(BaseModel):
 class Player(BaseModel):
     """Model for Sleeper player information."""
     player_id: str = Field(..., description="Unique player identifier")
-    full_name: str = Field(..., min_length=1, description="Player's full name")
+    full_name: Optional[str] = Field(None, description="Player's full name")
     first_name: Optional[str] = Field(None, description="Player's first name")
     last_name: Optional[str] = Field(None, description="Player's last name")
     position: Optional[str] = Field(None, description="Player position")
@@ -103,13 +103,31 @@ class Player(BaseModel):
     injury_status: Optional[str] = Field(None, description="Injury status")
     height: Optional[str] = Field(None, description="Player height")
     weight: Optional[str] = Field(None, description="Player weight")
-    age: Optional[int] = Field(None, ge=18, le=50, description="Player age")
+    age: Optional[int] = Field(None, ge=16, le=70, description="Player age")
     years_exp: Optional[int] = Field(None, ge=0, description="Years of experience")
     college: Optional[str] = Field(None, description="College attended")
     stats: Optional[Dict[str, Union[int, float]]] = Field(
         default_factory=dict, description="Player statistics"
     )
     fantasy_positions: Optional[List[str]] = Field(None, description="Fantasy eligible positions")
+    
+    @model_validator(mode='before')
+    @classmethod
+    def validate_player_data(cls, data):
+        """Handle missing or invalid fields before validation."""
+        if isinstance(data, dict):
+            # Handle missing full_name
+            if 'full_name' not in data or not data.get('full_name'):
+                first = data.get('first_name', '')
+                last = data.get('last_name', '')
+                if first or last:
+                    data['full_name'] = f"{first} {last}".strip()
+                else:
+                    # Use player_id as fallback
+                    player_id = data.get('player_id', 'Unknown')
+                    data['full_name'] = f"Player {player_id}"
+                    
+        return data
     
     @field_validator('position')
     @classmethod
@@ -135,7 +153,7 @@ class Player(BaseModel):
         
         # Special positions
         special_positions = {
-            'P', 'LS', 'FB'
+            'P', 'LS', 'FB', 'K/P', 'ATH'  # K/P is Kicker/Punter, ATH is Athlete
         }
         
         valid_positions = fantasy_positions | defensive_positions | oline_positions | special_positions

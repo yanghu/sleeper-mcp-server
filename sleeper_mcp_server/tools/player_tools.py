@@ -197,10 +197,13 @@ class PlayerTools:
             if cached_result is not None:
                 return cached_result
             
-            # Get player stats from API
-            stats = await self.client.get_player_stats(player_id, season)
+            # Get player stats from API  
+            all_stats = await self.client.get_player_stats("nfl", season)
             
-            if not stats:
+            # Extract stats for the specific player
+            player_stats = all_stats.get(player_id) if all_stats else None
+            
+            if not player_stats:
                 # Try to get player info to provide better error message
                 all_players = await self.client.get_players("nfl")
                 if player_id in all_players:
@@ -230,7 +233,7 @@ class PlayerTools:
                 "player_name": player_info.full_name if player_info else "Unknown",
                 "position": player_info.position if player_info else "Unknown",
                 "team": player_info.team if player_info else "Unknown",
-                "stats": stats.stats if hasattr(stats, 'stats') else stats
+                "stats": player_stats.stats if hasattr(player_stats, 'stats') else player_stats
             }
             
             # Cache for 1 hour (stats don't change frequently)

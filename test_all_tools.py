@@ -138,16 +138,14 @@ class SleeperToolTester:
         if "error" not in result:
             print("✅ get_user_leagues successful")
             
-            # Handle the actual response format
-            if isinstance(result, list) and len(result) > 0:
-                # This is the MCP format response
-                text_content = result[0].get('text', '')
-                parsed_data = self.extract_league_data_from_text(text_content)
-                self.test_data['user_leagues'] = parsed_data
-                print(f"   Parsed {len(parsed_data.get('leagues', []))} leagues from response")
+            # Extract structured data from the response
+            if 'result' in result and isinstance(result['result'], dict):
+                self.test_data['user_leagues'] = result['result']
+                leagues_count = len(result['result'].get('leagues', []))
+                print(f"   Found {leagues_count} leagues in response")
             else:
-                # This might be direct data
-                self.test_data['user_leagues'] = result
+                print("⚠️ Unexpected response format")
+                return False
             
             return True
         else:
@@ -168,7 +166,7 @@ class SleeperToolTester:
             return False
         
         # Use the first league
-        league_id = leagues[0].get('league_id')
+        league_id = leagues[0].get('id')
         if not league_id:
             print("⚠️ No league ID found in first league")
             return False
@@ -200,7 +198,7 @@ class SleeperToolTester:
             print("⚠️ No leagues found to test with")
             return False
         
-        league_id = leagues[0].get('league_id')
+        league_id = leagues[0].get('id')
         print(f"   Using league ID: {league_id}")
         
         result = self.call_tool("get_league_rosters", {
@@ -228,7 +226,7 @@ class SleeperToolTester:
             print("⚠️ No leagues found to test with")
             return False
         
-        league_id = leagues[0].get('league_id')
+        league_id = leagues[0].get('id')
         print(f"   Using league ID: {league_id}")
         
         result = self.call_tool("get_league_users", {
@@ -347,7 +345,7 @@ class SleeperToolTester:
             print("⚠️ No leagues found to test with")
             return False
         
-        league_id = leagues[0].get('league_id')
+        league_id = leagues[0].get('id')
         print(f"   Using league ID: {league_id}, Week 1")
         
         result = self.call_tool("get_matchups", {
@@ -376,7 +374,7 @@ class SleeperToolTester:
             print("⚠️ No leagues found to test with")
             return False
         
-        league_id = leagues[0].get('league_id')
+        league_id = leagues[0].get('id')
         print(f"   Using league ID: {league_id}, Week 1")
         
         result = self.call_tool("get_matchup_scores", {
@@ -403,7 +401,7 @@ class SleeperToolTester:
         # For now, use hardcoded values since we can't easily extract them from MCP text
         # In a real scenario, you'd parse the text response to extract roster IDs
         roster_id = 1  # Assume first roster
-        league_id = self.test_data['user_leagues']['leagues'][0].get('league_id')
+        league_id = self.test_data['user_leagues']['leagues'][0].get('id')
         print(f"   Using roster ID: {roster_id}, league ID: {league_id}")
         
         # Test evaluate_roster_needs
