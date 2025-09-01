@@ -97,7 +97,7 @@ class Player(BaseModel):
     full_name: str = Field(..., min_length=1, description="Player's full name")
     first_name: Optional[str] = Field(None, description="Player's first name")
     last_name: Optional[str] = Field(None, description="Player's last name")
-    position: str = Field(..., description="Player position")
+    position: Optional[str] = Field(None, description="Player position")
     team: Optional[str] = Field(None, description="NFL team abbreviation")
     status: Optional[PlayerStatus] = Field(None, description="Player status")
     injury_status: Optional[str] = Field(None, description="Injury status")

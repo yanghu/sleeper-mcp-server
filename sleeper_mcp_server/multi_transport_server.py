@@ -11,6 +11,7 @@ import sys
 import json
 from typing import Any, Dict, List, Optional, Sequence
 from pathlib import Path
+import datetime
 
 # HTTP server dependencies
 try:
@@ -138,27 +139,7 @@ class MultiTransportSleeperServer:
                 logger.error(f"Error listing tools: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
-        # Call tool endpoint
-        @self.fastapi_app.post("/tools/{tool_name}")
-        async def call_tool(tool_name: str, request: Request):
-            try:
-                body = await request.json()
-                arguments = body.get("arguments", {})
-                
-                result = await self._call_tool(tool_name, arguments)
-                
-                # Return both MCP format and simplified format for agent platforms
-                return {
-                    "tool_name": tool_name,
-                    "result": result,
-                    "mcp_format": result,
-                    "simplified": self._simplify_response(result)
-                }
-            except Exception as e:
-                logger.error(f"Error calling tool {tool_name}: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
-        
-        # Batch tool calls endpoint
+        # Batch tool calls endpoint (MUST come before the dynamic tool_name route)
         @self.fastapi_app.post("/tools/batch")
         async def batch_call_tools(request: Request):
             try:
@@ -173,16 +154,45 @@ class MultiTransportSleeperServer:
                     if not tool_name:
                         continue
                     
-                    result = await self._call_tool(tool_name, arguments)
+                    # Get raw result from tool (before MCP formatting)
+                    raw_result = await self._route_tool_call(tool_name, arguments)
+                    
+                    # Convert to structured JSON for HTTP clients
+                    structured_result = self._structure_raw_result(tool_name, raw_result)
+                    
                     results.append({
                         "tool_name": tool_name,
-                        "result": result,
-                        "simplified": self._simplify_response(result)
+                        "arguments": arguments,
+                        "result": structured_result,
+                        "timestamp": datetime.datetime.now().isoformat()
                     })
                 
                 return {"results": results, "count": len(results)}
             except Exception as e:
                 logger.error(f"Error in batch tool calls: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        # Call tool endpoint (MUST come after specific routes like /tools/batch)
+        @self.fastapi_app.post("/tools/{tool_name}")
+        async def call_tool(tool_name: str, request: Request):
+            try:
+                body = await request.json()
+                arguments = body.get("arguments", {})
+                
+                # Get raw result from tool (before MCP formatting)
+                raw_result = await self._route_tool_call(tool_name, arguments)
+                
+                # Convert to structured JSON for HTTP clients (ADK, etc.)
+                structured_result = self._structure_raw_result(tool_name, raw_result)
+                
+                return {
+                    "tool_name": tool_name,
+                    "arguments": arguments,
+                    "result": structured_result,
+                    "timestamp": datetime.datetime.now().isoformat()
+                }
+            except Exception as e:
+                logger.error(f"Error calling tool {tool_name}: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
         
         # Server info endpoint
@@ -697,9 +707,9 @@ class MultiTransportSleeperServer:
         
         for i, league in enumerate(leagues, 1):
             formatted += f"**{i}. {league['name']}**\n"
-            formatted += f"   • League ID: `{league['league_id']}`\n"
+            formatted += f"   • League ID: `{league['id']}`\n"
             formatted += f"   • Status: {league['status'].replace('_', ' ').title()}\n"
-            formatted += f"   • Teams: {league['total_rosters']}\n"
+            formatted += f"   • Teams: {league['teams']}\n"
             formatted += f"   • Sport: {league['sport'].upper()}\n\n"
         
         return formatted
@@ -710,7 +720,7 @@ class MultiTransportSleeperServer:
         league_id = result.get("league_id", "Unknown")
         status = result.get("status", "unknown").replace("_", " ").title()
         season = result.get("season", "Unknown")
-        total_rosters = result.get("total_rosters", 0)
+        total_rosters = result.get("teams", 0)
         settings = result.get("settings", {})
         
         formatted = f"🏆 **{name}**\n\n"
@@ -1505,6 +1515,349 @@ class MultiTransportSleeperServer:
                     )
                 )
             )
+
+    def _structure_raw_result(self, tool_name: str, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert raw Sleeper API result to structured JSON for HTTP clients."""
+        try:
+            if "error" in raw_result:
+                return {
+                    "error": raw_result.get("error"),
+                    "suggestions": raw_result.get("suggestions", []),
+                    "type": "error"
+                }
+            
+            # Structure based on tool type
+            if tool_name == "get_user_leagues":
+                return self._structure_user_leagues(raw_result)
+            elif tool_name == "get_league_info":
+                return self._structure_league_info(raw_result)
+            elif tool_name == "get_league_rosters":
+                return self._structure_league_rosters(raw_result)
+            elif tool_name == "get_league_rosters_with_draft_info":
+                return self._structure_league_rosters_with_draft(raw_result)
+            elif tool_name == "get_league_users":
+                return self._structure_league_users(raw_result)
+            elif tool_name == "get_roster_user_mapping":
+                return self._structure_roster_user_mapping(raw_result)
+            elif tool_name == "get_league_draft":
+                return self._structure_league_draft(raw_result)
+            elif tool_name == "search_players":
+                return self._structure_search_players(raw_result)
+            elif tool_name == "get_trending_players":
+                return self._structure_trending_players(raw_result)
+            elif tool_name == "get_player_stats":
+                return self._structure_player_stats(raw_result)
+            elif tool_name == "get_matchups":
+                return self._structure_matchups(raw_result)
+            elif tool_name == "get_matchup_scores":
+                return self._structure_matchup_scores(raw_result)
+            elif tool_name == "analyze_trade_targets":
+                return self._structure_trade_analysis(raw_result)
+            elif tool_name == "evaluate_roster_needs":
+                return self._structure_roster_evaluation(raw_result)
+            else:
+                # Fallback: return the raw result as-is
+                return {"data": raw_result, "type": "raw"}
+                
+        except Exception as e:
+            logger.error(f"Error structuring {tool_name} result: {e}")
+            return {"error": f"Failed to structure result: {str(e)}", "type": "error"}
+
+    def _structure_user_leagues(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure user leagues data."""
+        username = raw_result.get("username", "Unknown")
+        season = raw_result.get("season", "Unknown")
+        leagues = raw_result.get("leagues", [])
+        
+        return {
+            "username": username,
+            "season": season,
+            "leagues": [
+                {
+                    "id": league.get("league_id"),
+                    "name": league.get("name"),
+                    "status": league.get("status"),
+                    "teams": league.get("total_rosters"),
+                    "sport": league.get("sport"),
+                    "season": league.get("season"),
+                    "scoring_type": league.get("scoring_settings", {}).get("v", "Standard"),
+                    "roster_positions": league.get("roster_positions", [])
+                }
+                for league in leagues
+            ],
+            "total_leagues": len(leagues)
+        }
+
+    def _structure_league_info(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure league info data."""
+        league = raw_result.get("league", {})
+        settings = raw_result.get("settings", {})
+        
+        return {
+            "league_id": league.get("league_id"),
+            "name": league.get("name"),
+            "season": league.get("season"),
+            "status": league.get("status"),
+            "sport": league.get("sport"),
+            "teams": league.get("total_rosters"),
+            "scoring_type": settings.get("v", "Standard"),
+            "roster_positions": settings.get("roster_positions", []),
+            "scoring_settings": settings.get("scoring_settings", {}),
+            "trade_deadline": settings.get("trade_deadline"),
+            "playoff_start_week": settings.get("playoff_start_week"),
+            "playoff_teams": settings.get("playoff_teams")
+        }
+
+    def _structure_league_rosters(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure league rosters data."""
+        rosters = raw_result.get("rosters", [])
+        users = raw_result.get("users", [])
+        
+        # Create user lookup
+        user_lookup = {user["user_id"]: user for user in users}
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "rosters": [
+                {
+                    "roster_id": roster.get("roster_id"),
+                    "owner_id": roster.get("owner_id"),
+                    "owner_name": user_lookup.get(roster.get("owner_id"), {}).get("display_name", "Unknown"),
+                    "players": roster.get("players", []),
+                    "starters": roster.get("starters", []),
+                    "reserve": roster.get("reserve", []),
+                    "taxi": roster.get("taxi", []),
+                    "metadata": roster.get("metadata", {}),
+                    "settings": roster.get("settings", {})
+                }
+                for roster in rosters
+            ],
+            "total_rosters": len(rosters)
+        }
+
+    def _structure_league_rosters_with_draft(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure league rosters with draft info data."""
+        rosters = raw_result.get("rosters", [])
+        users = raw_result.get("users", [])
+        draft = raw_result.get("draft", {})
+        
+        # Create user lookup
+        user_lookup = {user["user_id"]: user for user in users}
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "draft_id": draft.get("draft_id"),
+            "draft_status": draft.get("status"),
+            "rosters": [
+                {
+                    "roster_id": roster.get("roster_id"),
+                    "owner_id": roster.get("owner_id"),
+                    "owner_name": user_lookup.get(roster.get("owner_id"), {}).get("display_name", "Unknown"),
+                    "players": roster.get("players", []),
+                    "starters": roster.get("starters", []),
+                    "reserve": roster.get("reserve", []),
+                    "taxi": roster.get("taxi", []),
+                    "metadata": roster.get("metadata", {}),
+                    "settings": roster.get("settings", {})
+                }
+                for roster in rosters
+            ],
+            "total_rosters": len(rosters)
+        }
+
+    def _structure_league_users(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure league users data."""
+        users = raw_result.get("users", [])
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "users": [
+                {
+                    "user_id": user.get("user_id"),
+                    "display_name": user.get("display_name"),
+                    "avatar": user.get("avatar"),
+                    "metadata": user.get("metadata", {})
+                }
+                for user in users
+            ],
+            "total_users": len(users)
+        }
+
+    def _structure_roster_user_mapping(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure roster user mapping data."""
+        rosters = raw_result.get("rosters", [])
+        users = raw_result.get("users", [])
+        
+        # Create user lookup
+        user_lookup = {user["user_id"]: user for user in users}
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "mappings": [
+                {
+                    "roster_id": roster.get("roster_id"),
+                    "user_id": roster.get("owner_id"),
+                    "user_name": user_lookup.get(roster.get("owner_id"), {}).get("display_name", "Unknown"),
+                    "avatar": user_lookup.get(roster.get("owner_id"), {}).get("avatar")
+                }
+                for roster in rosters
+            ],
+            "total_mappings": len(rosters)
+        }
+
+    def _structure_league_draft(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure league draft data."""
+        draft = raw_result.get("draft", {})
+        picks = raw_result.get("picks", [])
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "draft_id": draft.get("draft_id"),
+            "draft_status": draft.get("status"),
+            "draft_type": draft.get("type"),
+            "draft_order": draft.get("draft_order", []),
+            "picks": [
+                {
+                    "pick_no": pick.get("pick_no"),
+                    "round": pick.get("round"),
+                    "roster_id": pick.get("roster_id"),
+                    "player_id": pick.get("player_id"),
+                    "player_name": pick.get("player_name"),
+                    "position": pick.get("position"),
+                    "team": pick.get("team"),
+                    "is_keeper": pick.get("is_keeper", False),
+                    "keeper_for_team": pick.get("keeper_for_team"),
+                    "draft_slot": pick.get("draft_slot")
+                }
+                for pick in picks
+            ],
+            "total_picks": len(picks)
+        }
+
+    def _structure_search_players(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure search players data."""
+        players = raw_result.get("players", [])
+        
+        return {
+            "query": raw_result.get("query", ""),
+            "position": raw_result.get("position"),
+            "players": [
+                {
+                    "id": player.get("player_id"),
+                    "name": player.get("full_name"),
+                    "position": player.get("position"),
+                    "team": player.get("team"),
+                    "status": player.get("status"),
+                    "search_rank": player.get("search_rank"),
+                    "fantasy_positions": player.get("fantasy_positions", [])
+                }
+                for player in players
+            ],
+            "total_players": len(players)
+        }
+
+    def _structure_trending_players(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure trending players data."""
+        players = raw_result.get("players", [])
+        
+        return {
+            "sport": raw_result.get("sport", "nfl"),
+            "add_drop": raw_result.get("add_drop", "add"),
+            "players": [
+                {
+                    "id": player.get("player_id"),
+                    "name": player.get("full_name"),
+                    "position": player.get("position"),
+                    "team": player.get("team"),
+                    "status": player.get("status"),
+                    "trend_direction": player.get("trend_direction"),
+                    "trend_reason": player.get("trend_reason")
+                }
+                for player in players
+            ],
+            "total_players": len(players)
+        }
+
+    def _structure_player_stats(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure player stats data."""
+        stats = raw_result.get("stats", {})
+        player = raw_result.get("player", {})
+        
+        return {
+            "player_id": player.get("player_id"),
+            "player_name": player.get("full_name"),
+            "position": player.get("position"),
+            "team": player.get("team"),
+            "season": raw_result.get("season"),
+            "stats": stats,
+            "total_stats": len(stats)
+        }
+
+    def _structure_matchups(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure matchups data."""
+        matchups = raw_result.get("matchups", [])
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "week": raw_result.get("week"),
+            "matchups": [
+                {
+                    "matchup_id": matchup.get("matchup_id"),
+                    "roster_id": matchup.get("roster_id"),
+                    "points": matchup.get("points"),
+                    "players": matchup.get("players", []),
+                    "starters": matchup.get("starters", []),
+                    "reserve": matchup.get("reserve", []),
+                    "taxi": matchup.get("taxi", [])
+                }
+                for matchup in matchups
+            ],
+            "total_matchups": len(matchups)
+        }
+
+    def _structure_matchup_scores(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure matchup scores data."""
+        matchups = raw_result.get("matchups", [])
+        
+        return {
+            "league_id": raw_result.get("league_id"),
+            "week": raw_result.get("week"),
+            "matchups": [
+                {
+                    "matchup_id": matchup.get("matchup_id"),
+                    "roster_id": matchup.get("roster_id"),
+                    "points": matchup.get("points"),
+                    "starters_points": matchup.get("starters_points", 0),
+                    "bench_points": matchup.get("bench_points", 0)
+                }
+                for matchup in matchups
+            ],
+            "total_matchups": len(matchups)
+        }
+
+    def _structure_trade_analysis(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure trade analysis data."""
+        return {
+            "league_id": raw_result.get("league_id"),
+            "roster_id": raw_result.get("roster_id"),
+            "position": raw_result.get("position"),
+            "target_teams": raw_result.get("target_teams", []),
+            "suggested_trades": raw_result.get("suggested_trades", []),
+            "positional_needs": raw_result.get("positional_needs", {}),
+            "trade_value_analysis": raw_result.get("trade_value_analysis", {})
+        }
+
+    def _structure_roster_evaluation(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Structure roster evaluation data."""
+        return {
+            "league_id": raw_result.get("league_id"),
+            "roster_id": raw_result.get("roster_id"),
+            "strengths": raw_result.get("strengths", []),
+            "weaknesses": raw_result.get("weaknesses", []),
+            "recommendations": raw_result.get("recommendations", []),
+            "positional_analysis": raw_result.get("positional_analysis", {}),
+            "overall_grade": raw_result.get("overall_grade", "N/A")
+        }
 
 
 async def main() -> None:
