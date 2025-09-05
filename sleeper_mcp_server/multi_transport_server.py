@@ -277,6 +277,30 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["username"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "username": {"type": "string"},
+                        "season": {"type": "string"},
+                        "leagues": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "name": {"type": "string"},
+                                    "status": {"type": "string"},
+                                    "teams": {"type": "integer"},
+                                    "sport": {"type": "string"},
+                                    "season": {"type": ["string", "null"]},
+                                    "scoring_type": {"type": "string"},
+                                    "roster_positions": {"type": "array"}
+                                }
+                            }
+                        },
+                        "total_leagues": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -291,6 +315,23 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "name": {"type": "string"},
+                        "season": {"type": "string"},
+                        "status": {"type": "string"},
+                        "sport": {"type": "string"},
+                        "teams": {"type": "integer"},
+                        "scoring_type": {"type": "string"},
+                        "roster_positions": {"type": "array"},
+                        "scoring_settings": {"type": "object"},
+                        "trade_deadline": {"type": ["integer", "null"]},
+                        "playoff_start_week": {"type": ["integer", "null"]},
+                        "playoff_teams": {"type": ["integer", "null"]}
+                    }
                 }
             ),
             Tool(
@@ -305,6 +346,32 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "rosters": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "roster_id": {"type": "integer"},
+                                    "owner_id": {"type": "string"},
+                                    "players": {"type": "array", "items": {"type": "string"}},
+                                    "starters": {"type": "array", "items": {"type": "string"}},
+                                    "reserve": {"type": "array", "items": {"type": "string"}},
+                                    "taxi": {"type": "array", "items": {"type": "string"}},
+                                    "wins": {"type": "integer"},
+                                    "losses": {"type": "integer"},
+                                    "ties": {"type": "integer"},
+                                    "fpts": {"type": "number"},
+                                    "fpts_against": {"type": "number"}
+                                }
+                            }
+                        },
+                        "total_rosters": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -333,6 +400,26 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "users": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {"type": "string"},
+                                    "username": {"type": "string"},
+                                    "display_name": {"type": ["string", "null"]},
+                                    "avatar": {"type": ["string", "null"]},
+                                    "is_owner": {"type": "boolean"}
+                                }
+                            }
+                        },
+                        "total_users": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -382,6 +469,29 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["query"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "position": {"type": ["string", "null"]},
+                        "players": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "name": {"type": "string"},
+                                    "position": {"type": ["string", "null"]},
+                                    "team": {"type": ["string", "null"]},
+                                    "status": {"type": "string"},
+                                    "search_rank": {"type": ["number", "null"]},
+                                    "fantasy_positions": {"type": "array"}
+                                }
+                            }
+                        },
+                        "total_players": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -402,6 +512,29 @@ class MultiTransportSleeperServer:
                             "default": "add"
                         }
                     }
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "sport": {"type": "string"},
+                        "add_drop": {"type": "string"},
+                        "players": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "name": {"type": "string"},
+                                    "position": {"type": ["string", "null"]},
+                                    "team": {"type": ["string", "null"]},
+                                    "status": {"type": "string"},
+                                    "trend_direction": {"type": ["string", "null"]},
+                                    "trend_reason": {"type": ["string", "null"]}
+                                }
+                            }
+                        },
+                        "total_players": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -421,6 +554,21 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["player_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "player_id": {"type": "string"},
+                        "player_name": {"type": ["string", "null"]},
+                        "position": {"type": ["string", "null"]},
+                        "team": {"type": ["string", "null"]},
+                        "season": {"type": "string"},
+                        "stats": {
+                            "type": "object",
+                            "additionalProperties": {"type": ["number", "null"]}
+                        },
+                        "total_stats": {"type": "integer"}
+                    }
                 }
             ),
             
