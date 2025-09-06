@@ -118,6 +118,11 @@ Add the following configuration to your Claude Desktop MCP settings file:
 | `LOG_LEVEL` | Logging verbosity (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 | `MAX_RETRIES` | Maximum API retry attempts | `3` |
 
+## Documentation
+
+- **[API Documentation](API_DOCUMENTATION.md)** - Complete HTTP API reference with schemas and examples
+- **[Testing Guide](tests/)** - Regression tests and validation tools
+
 ## Available MCP Tools
 
 ### League Tools
@@ -506,14 +511,47 @@ Enable debug logging for detailed troubleshooting:
 ### Running Tests
 
 ```bash
-# Run all tests
-pytest
+# Run all tests (schema validation + regression)
+python run_tests.py
 
-# Run with coverage
-pytest --cov=sleeper_mcp_server
+# Run only schema validation (no server needed)
+python run_tests.py --type schema
 
-# Run specific test file
-pytest tests/test_server.py
+# Run only regression tests (requires server running)
+python run_tests.py --type regression
+
+# Run with verbose output
+python run_tests.py --verbose
+
+# Run against different server
+python run_tests.py --server http://localhost:8080
+
+# Run individual validation script
+python validate_against_schemas.py
+
+# Run individual regression test
+python tests/regression_test.py --verbose
+```
+
+### Test Types
+
+1. **Schema Validation** - Validates all tools against their declared JSON schemas
+2. **Regression Tests** - Tests actual API calls against expected response formats
+3. **Integration Tests** - End-to-end testing with real Sleeper API data
+
+### Test Configuration
+
+Tests can be configured via command line arguments or environment variables:
+
+```bash
+# Set server URL for regression tests
+export SLEEPER_TEST_SERVER="http://localhost:8000"
+
+# Enable verbose test output
+export TEST_VERBOSE="true"
+
+# Run tests against production-like server
+python run_tests.py --server https://your-server.com
 ```
 
 ### Code Quality
