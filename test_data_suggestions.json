@@ -1,0 +1,22 @@
+{
+  "get_user_leagues": {
+    "current": {
+      "username": "testuser123"
+    },
+    "suggested": [
+      {
+        "username": "sleeper",
+        "season": "2024"
+      },
+      {
+        "username": "fantasyfootball",
+        "season": "2024"
+      },
+      {
+        "username": "nfl",
+        "season": "2024"
+      }
+    ],
+    "reason": "Use known active Sleeper users"
+  }
+}

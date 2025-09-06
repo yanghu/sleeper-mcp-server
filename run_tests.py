@@ -20,6 +20,17 @@ def run_regression_tests(verbose=False, server_url="http://localhost:8000"):
     result = subprocess.run(cmd)
     return result.returncode == 0
 
+def run_improved_regression_tests(verbose=False, server_url="http://localhost:8000"):
+    """Run improved regression tests with better test data."""
+    print("🚀 Running improved regression tests...")
+    cmd = [sys.executable, "tests/improved_regression_test.py"]
+    if verbose:
+        cmd.append("--verbose")
+    cmd.extend(["--server", server_url])
+    
+    result = subprocess.run(cmd)
+    return result.returncode == 0
+
 def run_schema_validation():
     """Run schema validation tests."""
     print("📋 Running schema validation...")
@@ -36,25 +47,31 @@ def run_all_tests(verbose=False, server_url="http://localhost:8000"):
     print("-" * 30)
     schema_success = run_schema_validation()
     
-    # Regression tests (needs server running)
-    print("\n2. Regression Tests")
+    # Improved regression tests (needs server running)
+    print("\n2. Improved Regression Tests")
+    print("-" * 30)
+    improved_regression_success = run_improved_regression_tests(verbose, server_url)
+    
+    # Basic regression tests (for comparison)
+    print("\n3. Basic Regression Tests")
     print("-" * 30)
     regression_success = run_regression_tests(verbose, server_url)
     
     # Summary
     print("\n📊 TEST SUMMARY")
     print("=" * 50)
-    print(f"Schema Validation: {'✅ PASSED' if schema_success else '❌ FAILED'}")
-    print(f"Regression Tests:  {'✅ PASSED' if regression_success else '❌ FAILED'}")
+    print(f"Schema Validation:     {'✅ PASSED' if schema_success else '❌ FAILED'}")
+    print(f"Improved Regression:   {'✅ PASSED' if improved_regression_success else '❌ FAILED'}")
+    print(f"Basic Regression:      {'✅ PASSED' if regression_success else '❌ FAILED'}")
     
-    overall_success = schema_success and regression_success
+    overall_success = schema_success and improved_regression_success
     print(f"\nOverall Result: {'🎉 ALL TESTS PASSED' if overall_success else '💥 SOME TESTS FAILED'}")
     
     return overall_success
 
 def main():
     parser = argparse.ArgumentParser(description="Sleeper MCP Server Test Runner")
-    parser.add_argument("--type", "-t", choices=["schema", "regression", "all"], 
+    parser.add_argument("--type", "-t", choices=["schema", "regression", "improved", "all"], 
                        default="all", help="Type of tests to run")
     parser.add_argument("--verbose", "-v", action="store_true", 
                        help="Verbose output")
@@ -69,6 +86,8 @@ def main():
         success = run_schema_validation()
     elif args.type == "regression":
         success = run_regression_tests(args.verbose, args.server)
+    elif args.type == "improved":
+        success = run_improved_regression_tests(args.verbose, args.server)
     elif args.type == "all":
         success = run_all_tests(args.verbose, args.server)
     
