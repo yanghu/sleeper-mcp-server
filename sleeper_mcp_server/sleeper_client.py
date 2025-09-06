@@ -411,12 +411,10 @@ class SleeperClient:
         Returns:
             List of TrendingPlayer models
         """
-        params = {
-            "lookback_hours": hours,
-            "limit": limit,
-        }
+        # Build URL with parameters as per Sleeper API documentation
+        endpoint = f"/players/{sport}/trending/{add_drop}?lookback_hours={hours}&limit={limit}"
         
-        data = await self._make_request("GET", f"/players/{sport}/trending/{add_drop}", params=params)
+        data = await self._make_request("GET", endpoint)
         if not data:
             return []
         
