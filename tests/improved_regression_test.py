@@ -207,8 +207,8 @@ def run_improved_regression_tests(verbose: bool = False) -> bool:
     # Improved test cases with better data that should return results
     test_cases = [
         # Use known active Sleeper users
+        ("get_user_leagues", {"username": "huyang", "season": "2025"}),
         ("get_user_leagues", {"username": "sleeper", "season": "2024"}),
-        ("get_user_leagues", {"username": "fantasyfootball", "season": "2024"}),
         
         # Use well-known NFL players
         ("search_players", {"query": "Josh Allen", "position": "QB"}),
@@ -226,18 +226,17 @@ def run_improved_regression_tests(verbose: bool = False) -> bool:
         ("get_player_stats", {"player_id": "4035", "season": "2024"}),  # Travis Kelce
         ("get_player_stats", {"player_id": "4037", "season": "2024"}),  # Christian McCaffrey
         
-        # Note: League-based tools will likely fail with fake IDs, but we'll test them anyway
-        # to ensure proper error handling
-        ("get_league_info", {"league_id": "123456789012345678"}),
-        ("get_league_rosters", {"league_id": "123456789012345678"}),
-        ("get_league_rosters_with_draft_info", {"league_id": "123456789012345678"}),
-        ("get_league_users", {"league_id": "123456789012345678"}),
-        ("get_roster_user_mapping", {"league_id": "123456789012345678"}),
-        ("get_league_draft", {"league_id": "123456789012345678"}),
-        ("get_matchups", {"league_id": "123456789012345678", "week": 1}),
-        ("get_matchup_scores", {"league_id": "123456789012345678", "week": 1}),
-        ("analyze_trade_targets", {"league_id": "123456789012345678", "roster_id": 1}),
-        ("evaluate_roster_needs", {"league_id": "123456789012345678", "roster_id": 1})
+        # Use real league ID from huyang's account
+        ("get_league_info", {"league_id": "1266251242766598144"}),
+        ("get_league_rosters", {"league_id": "1266251242766598144"}),
+        ("get_league_rosters_with_draft_info", {"league_id": "1266251242766598144"}),
+        ("get_league_users", {"league_id": "1266251242766598144"}),
+        ("get_roster_user_mapping", {"league_id": "1266251242766598144"}),
+        ("get_league_draft", {"league_id": "1266251242766598144"}),
+        ("get_matchups", {"league_id": "1266251242766598144", "week": 1}),
+        ("get_matchup_scores", {"league_id": "1266251242766598144", "week": 1}),
+        ("analyze_trade_targets", {"league_id": "1266251242766598144", "roster_id": 1}),
+        ("evaluate_roster_needs", {"league_id": "1266251242766598144", "roster_id": 1})
     ]
     
     results = []

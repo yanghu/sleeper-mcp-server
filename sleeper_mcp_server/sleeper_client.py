@@ -449,7 +449,7 @@ class SleeperClient:
         Returns:
             Dictionary mapping player IDs to PlayerStats models
         """
-        endpoint = f"/stats/{sport}/{season_type}"
+        endpoint = f"/stats/{sport}/{season}/{season_type}"
         if week is not None:
             endpoint += f"/{week}"
         
