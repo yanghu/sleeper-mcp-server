@@ -160,10 +160,15 @@ class MultiTransportSleeperServer:
                     # Convert to structured JSON for HTTP clients
                     structured_result = self._structure_raw_result(tool_name, raw_result)
                     
+                    # Check if the structured result is an error
+                    is_success = "error" not in structured_result
+                    
                     results.append({
                         "tool_name": tool_name,
                         "arguments": arguments,
-                        "result": structured_result,
+                        "success": is_success,
+                        "result": structured_result if is_success else None,
+                        "error": structured_result.get("error") if not is_success else None,
                         "timestamp": datetime.datetime.now().isoformat()
                     })
                 
@@ -185,10 +190,15 @@ class MultiTransportSleeperServer:
                 # Convert to structured JSON for HTTP clients (ADK, etc.)
                 structured_result = self._structure_raw_result(tool_name, raw_result)
                 
+                # Check if the structured result is an error
+                is_success = "error" not in structured_result
+                
                 return {
                     "tool_name": tool_name,
                     "arguments": arguments,
-                    "result": structured_result,
+                    "success": is_success,
+                    "result": structured_result if is_success else None,
+                    "error": structured_result.get("error") if not is_success else None,
                     "timestamp": datetime.datetime.now().isoformat()
                 }
             except Exception as e:
@@ -386,6 +396,32 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "draft_id": {"type": ["string", "null"]},
+                        "draft_status": {"type": ["string", "null"]},
+                        "rosters": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "roster_id": {"type": "integer"},
+                                    "owner_id": {"type": "string"},
+                                    "owner_name": {"type": "string"},
+                                    "players": {"type": "array", "items": {"type": "string"}},
+                                    "starters": {"type": "array", "items": {"type": "string"}},
+                                    "reserve": {"type": "array", "items": {"type": "string"}},
+                                    "taxi": {"type": "array", "items": {"type": "string"}},
+                                    "metadata": {"type": "object"},
+                                    "settings": {"type": "object"}
+                                }
+                            }
+                        },
+                        "total_rosters": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -434,6 +470,25 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "mappings": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "roster_id": {"type": "integer"},
+                                    "user_id": {"type": "string"},
+                                    "user_name": {"type": "string"},
+                                    "avatar": {"type": ["string", "null"]}
+                                }
+                            }
+                        },
+                        "total_mappings": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -448,6 +503,35 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "draft_id": {"type": ["string", "null"]},
+                        "draft_status": {"type": ["string", "null"]},
+                        "draft_type": {"type": ["string", "null"]},
+                        "draft_order": {"type": "array", "items": {"type": "integer"}},
+                        "picks": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "pick_no": {"type": "integer"},
+                                    "round": {"type": "integer"},
+                                    "roster_id": {"type": "integer"},
+                                    "player_id": {"type": "string"},
+                                    "player_name": {"type": ["string", "null"]},
+                                    "position": {"type": ["string", "null"]},
+                                    "team": {"type": ["string", "null"]},
+                                    "is_keeper": {"type": "boolean"},
+                                    "keeper_for_team": {"type": ["string", "null"]},
+                                    "draft_slot": {"type": ["integer", "null"]}
+                                }
+                            }
+                        },
+                        "total_picks": {"type": "integer"}
+                    }
                 }
             ),
             
@@ -527,7 +611,7 @@ class MultiTransportSleeperServer:
                                     "name": {"type": "string"},
                                     "position": {"type": ["string", "null"]},
                                     "team": {"type": ["string", "null"]},
-                                    "status": {"type": "string"},
+                                    "status": {"type": ["string", "null"]},
                                     "trend_direction": {"type": ["string", "null"]},
                                     "trend_reason": {"type": ["string", "null"]}
                                 }
@@ -591,6 +675,29 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id", "week"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "week": {"type": "integer"},
+                        "matchups": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "matchup_id": {"type": ["integer", "null"]},
+                                    "roster_id": {"type": "integer"},
+                                    "points": {"type": ["number", "null"]},
+                                    "players": {"type": "array", "items": {"type": "string"}},
+                                    "starters": {"type": "array", "items": {"type": "string"}},
+                                    "reserve": {"type": "array", "items": {"type": "string"}},
+                                    "taxi": {"type": "array", "items": {"type": "string"}}
+                                }
+                            }
+                        },
+                        "total_matchups": {"type": "integer"}
+                    }
                 }
             ),
             Tool(
@@ -611,6 +718,27 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id", "week"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "week": {"type": "integer"},
+                        "matchups": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "matchup_id": {"type": ["integer", "null"]},
+                                    "roster_id": {"type": "integer"},
+                                    "points": {"type": ["number", "null"]},
+                                    "starters_points": {"type": "number"},
+                                    "bench_points": {"type": "number"}
+                                }
+                            }
+                        },
+                        "total_matchups": {"type": "integer"}
+                    }
                 }
             ),
             
@@ -636,6 +764,18 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id", "roster_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "roster_id": {"type": "integer"},
+                        "position": {"type": ["string", "null"]},
+                        "target_teams": {"type": "array", "items": {"type": "object"}},
+                        "suggested_trades": {"type": "array", "items": {"type": "object"}},
+                        "positional_needs": {"type": "object"},
+                        "trade_value_analysis": {"type": "object"}
+                    }
                 }
             ),
             Tool(
@@ -654,6 +794,18 @@ class MultiTransportSleeperServer:
                         }
                     },
                     "required": ["league_id", "roster_id"]
+                },
+                outputSchema={
+                    "type": "object",
+                    "properties": {
+                        "league_id": {"type": "string"},
+                        "roster_id": {"type": "integer"},
+                        "strengths": {"type": "array", "items": {"type": "string"}},
+                        "weaknesses": {"type": "array", "items": {"type": "string"}},
+                        "recommendations": {"type": "array", "items": {"type": "string"}},
+                        "positional_analysis": {"type": "object"},
+                        "overall_grade": {"type": "string"}
+                    }
                 }
             )
         ]
@@ -1833,46 +1985,42 @@ class MultiTransportSleeperServer:
 
     def _structure_roster_user_mapping(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
         """Structure roster user mapping data."""
-        rosters = raw_result.get("rosters", [])
-        users = raw_result.get("users", [])
-        
-        # Create user lookup
-        user_lookup = {user["user_id"]: user for user in users}
+        # The get_roster_user_mapping method returns roster_user_mapping directly
+        roster_mappings = raw_result.get("roster_user_mapping", [])
         
         return {
             "league_id": raw_result.get("league_id"),
             "mappings": [
                 {
-                    "roster_id": roster.get("roster_id"),
-                    "user_id": roster.get("owner_id"),
-                    "user_name": user_lookup.get(roster.get("owner_id"), {}).get("display_name", "Unknown"),
-                    "avatar": user_lookup.get(roster.get("owner_id"), {}).get("avatar")
+                    "roster_id": mapping.get("roster_id"),
+                    "user_id": mapping.get("owner_id"),
+                    "user_name": mapping.get("user_info", {}).get("display_name", "Unknown"),
+                    "avatar": mapping.get("user_info", {}).get("avatar")
                 }
-                for roster in rosters
+                for mapping in roster_mappings
             ],
-            "total_mappings": len(rosters)
+            "total_mappings": len(roster_mappings)
         }
 
     def _structure_league_draft(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
         """Structure league draft data."""
-        draft = raw_result.get("draft", {})
-        picks = raw_result.get("picks", [])
+        picks = raw_result.get("draft_picks", [])
         
         return {
             "league_id": raw_result.get("league_id"),
-            "draft_id": draft.get("draft_id"),
-            "draft_status": draft.get("status"),
-            "draft_type": draft.get("type"),
-            "draft_order": draft.get("draft_order", []),
+            "draft_id": raw_result.get("draft_id"),
+            "draft_status": raw_result.get("status"),
+            "draft_type": raw_result.get("draft_type"),
+            "draft_order": raw_result.get("draft_order", []),
             "picks": [
                 {
                     "pick_no": pick.get("pick_no"),
                     "round": pick.get("round"),
-                    "roster_id": pick.get("roster_id"),
+                    "roster_id": pick.get("picked_by"),  # Use picked_by as roster_id
                     "player_id": pick.get("player_id"),
-                    "player_name": pick.get("player_name"),
-                    "position": pick.get("position"),
-                    "team": pick.get("team"),
+                    "player_name": pick.get("player_info", {}).get("full_name"),
+                    "position": pick.get("player_info", {}).get("position"),
+                    "team": pick.get("player_info", {}).get("team"),
                     "is_keeper": pick.get("is_keeper", False),
                     "keeper_for_team": pick.get("keeper_for_team"),
                     "draft_slot": pick.get("draft_slot")
@@ -1891,8 +2039,8 @@ class MultiTransportSleeperServer:
             "position": raw_result.get("position"),
             "players": [
                 {
-                    "id": player.get("player_id"),
-                    "name": player.get("full_name"),
+                    "id": player.get("id"),
+                    "name": player.get("name"),
                     "position": player.get("position"),
                     "team": player.get("team"),
                     "status": player.get("status"),
@@ -1929,16 +2077,15 @@ class MultiTransportSleeperServer:
     def _structure_player_stats(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
         """Structure player stats data."""
         stats = raw_result.get("stats", {})
-        player = raw_result.get("player", {})
         
         return {
-            "player_id": player.get("player_id"),
-            "player_name": player.get("full_name"),
-            "position": player.get("position"),
-            "team": player.get("team"),
+            "player_id": raw_result.get("player_id"),
+            "player_name": raw_result.get("player_name"),
+            "position": raw_result.get("position"),
+            "team": raw_result.get("team"),
             "season": raw_result.get("season"),
             "stats": stats,
-            "total_stats": len(stats)
+            "total_stats": raw_result.get("total_stats", len(stats))
         }
 
     def _structure_matchups(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -1965,22 +2112,22 @@ class MultiTransportSleeperServer:
 
     def _structure_matchup_scores(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
         """Structure matchup scores data."""
-        matchups = raw_result.get("matchups", [])
+        scores = raw_result.get("scores", [])
         
         return {
             "league_id": raw_result.get("league_id"),
             "week": raw_result.get("week"),
             "matchups": [
                 {
-                    "matchup_id": matchup.get("matchup_id"),
-                    "roster_id": matchup.get("roster_id"),
-                    "points": matchup.get("points"),
-                    "starters_points": matchup.get("starters_points", 0),
-                    "bench_points": matchup.get("bench_points", 0)
+                    "matchup_id": score.get("matchup_id"),
+                    "roster_id": score.get("roster_id"),
+                    "points": score.get("points"),
+                    "starters_points": score.get("points", 0),  # Use points as starters_points
+                    "bench_points": score.get("points_bonus", 0)  # Use points_bonus as bench_points
                 }
-                for matchup in matchups
+                for score in scores
             ],
-            "total_matchups": len(matchups)
+            "total_matchups": len(scores)
         }
 
     def _structure_trade_analysis(self, raw_result: Dict[str, Any]) -> Dict[str, Any]:
